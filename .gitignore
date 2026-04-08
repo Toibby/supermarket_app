@@ -1,7 +1,16 @@
+# node_modules/
+# .env*
+# dist/
+# .next/
+# .turbo/
+# build/
+# pnpm-lock.yaml
+
+
 node_modules/
 .env*
 dist/
 .next/
 .turbo/
 build/
-pnpm-lock.yaml
+.DS_Store
