@@ -400,6 +400,160 @@
 // }
 
 
+// "use server";
+
+// import { redirect } from "next/navigation";
+// import type { CheckoutPayload } from "@supermarket/shared";
+// import { createClient } from "@/lib/supabase/server";
+
+// function toText(value: FormDataEntryValue | null) {
+//   return typeof value === "string" ? value.trim() : "";
+// }
+
+// export async function loginAction(formData: FormData) {
+//   const supabase = await createClient();
+
+//   const email = toText(formData.get("email"));
+//   const password = toText(formData.get("password"));
+
+//   const { error } = await supabase.auth.signInWithPassword({
+//     email,
+//     password
+//   });
+
+//   if (error) {
+//     return { success: false, message: error.message };
+//   }
+
+//   redirect("/account");
+// }
+
+// export async function registerAction(formData: FormData) {
+//   const supabase = await createClient();
+
+//   const fullName = toText(formData.get("fullName"));
+//   const email = toText(formData.get("email"));
+//   const phone = toText(formData.get("phone"));
+//   const password = toText(formData.get("password"));
+
+//   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+//     email,
+//     password,
+//     options: {
+//       data: {
+//         full_name: fullName
+//       }
+//     }
+//   });
+
+//   if (signUpError) {
+//     return { success: false, message: signUpError.message };
+//   }
+
+//   const userId = signUpData.user?.id;
+
+//   if (!userId) {
+//     return {
+//       success: false,
+//       message: "Account created partially. Please try logging in."
+//     };
+//   }
+
+//   // Important: sign in immediately so auth.uid() exists for updates
+//   const { error: signInError } = await supabase.auth.signInWithPassword({
+//     email,
+//     password
+//   });
+
+//   if (signInError) {
+//     return {
+//       success: false,
+//       message:
+//         "Account created, but automatic login failed. Please log in manually."
+//     };
+//   }
+
+//   await supabase.from("profiles").upsert({
+//     id: userId,
+//     email,
+//     full_name: fullName,
+//     phone: phone || null,
+//     role: "customer",
+//     is_active: true
+//   });
+
+//   await supabase.from("customers").upsert({
+//     id: userId,
+//     email,
+//     full_name: fullName,
+//     phone: phone || null
+//   });
+
+//   redirect("/account");
+// }
+
+// export async function logoutAction() {
+//   const supabase = await createClient();
+//   await supabase.auth.signOut();
+//   redirect("/");
+// }
+
+// export async function createOrderAction(
+//   items: {
+//     productId: string;
+//     quantity: number;
+//   }[],
+//   payload: CheckoutPayload
+// ) {
+//   const supabase = await createClient();
+
+//   const {
+//     data: { user }
+//   } = await supabase.auth.getUser();
+
+//   if (!user) {
+//     return {
+//       success: false,
+//       message: "Please log in before placing an order."
+//     };
+//   }
+
+//   if (!items.length) {
+//     return {
+//       success: false,
+//       message: "Your cart is empty."
+//     };
+//   }
+
+//   const { data, error } = await supabase.rpc("create_customer_order", {
+//     p_items: items,
+//     p_delivery_address_line_1: payload.deliveryAddressLine1,
+//     p_delivery_city: payload.deliveryCity,
+//     p_delivery_state: payload.deliveryState,
+//     p_delivery_address_line_2: payload.deliveryAddressLine2 ?? null,
+//     p_delivery_country: payload.deliveryCountry ?? "Nigeria",
+//     p_phone: payload.phone ?? null,
+//     p_notes: payload.notes ?? null,
+//     p_payment_method: payload.paymentMethod
+//   });
+
+//   if (error || !data || !data.length) {
+//     console.error(error);
+//     return {
+//       success: false,
+//       message: error?.message ?? "Unable to create order."
+//     };
+//   }
+
+//   return {
+//     success: true,
+//     message: "Order placed successfully.",
+//     orderId: data[0].order_id,
+//     orderNumber: data[0].order_number
+//   };
+// }
+
+
 "use server";
 
 import { redirect } from "next/navigation";
@@ -410,7 +564,7 @@ function toText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function loginAction(formData: FormData) {
+export async function loginAction(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   const email = toText(formData.get("email"));
@@ -422,13 +576,13 @@ export async function loginAction(formData: FormData) {
   });
 
   if (error) {
-    return { success: false, message: error.message };
+    redirect("/login");
   }
 
   redirect("/account");
 }
 
-export async function registerAction(formData: FormData) {
+export async function registerAction(formData: FormData): Promise<void> {
   const supabase = await createClient();
 
   const fullName = toText(formData.get("fullName"));
@@ -447,30 +601,22 @@ export async function registerAction(formData: FormData) {
   });
 
   if (signUpError) {
-    return { success: false, message: signUpError.message };
+    redirect("/register");
   }
 
   const userId = signUpData.user?.id;
 
   if (!userId) {
-    return {
-      success: false,
-      message: "Account created partially. Please try logging in."
-    };
+    redirect("/login");
   }
 
-  // Important: sign in immediately so auth.uid() exists for updates
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email,
     password
   });
 
   if (signInError) {
-    return {
-      success: false,
-      message:
-        "Account created, but automatic login failed. Please log in manually."
-    };
+    redirect("/login");
   }
 
   await supabase.from("profiles").upsert({
@@ -492,7 +638,7 @@ export async function registerAction(formData: FormData) {
   redirect("/account");
 }
 
-export async function logoutAction() {
+export async function logoutAction(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
